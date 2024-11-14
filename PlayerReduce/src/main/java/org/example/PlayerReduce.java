@@ -27,7 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
-public final class JavaWordCount {
+public final class PlayerReduce {
     private static final Pattern SPACE = Pattern.compile(" ");
 
     public static void main(String[] args) throws Exception {
