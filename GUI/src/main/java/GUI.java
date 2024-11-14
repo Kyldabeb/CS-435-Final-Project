@@ -44,16 +44,13 @@ public class GUI {
         button.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                // Get the text from both text fields
                 String playerName = playerField.getText();
                 String teamName = teamField.getText();
                 
-                // Display the result in the result label
                 resultLabel.setText("Player: " + playerName + ", Team: " + teamName);
             }
         });
 
-        // Make the frame visible
         frame.setVisible(true);
     }
 }
