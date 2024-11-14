@@ -2,6 +2,12 @@
 echo "Compiling all sub-projects..."
 
 # Compile Spark Project
+echo "Compiling Spark Id Project..."
+cd GetID
+mvn clean install
+cd ..
+
+# Compile Spark Project
 echo "Compiling Spark Project..."
 cd PlayerReduce
 mvn clean install

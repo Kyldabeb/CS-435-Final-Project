@@ -27,22 +27,22 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.regex.Pattern;
 
-public final class PlayerReduce {
+public final class GetID {
     private static final Pattern SPACE = Pattern.compile(" ");
 
     public static void main(String[] args) throws Exception {
 
         if (args.length < 1) {
-            System.err.println("Usage: JavaWordCount <file>");
+            System.err.println("Usage: GetID <Player Name> <Team Name>");
             System.exit(1);
         }
 
         SparkSession spark = SparkSession
                 .builder()
-                .appName("JavaWordCount").master("local")
+                .appName("GetID")
                 .getOrCreate();
 
-        JavaRDD<String> lines = spark.read().textFile(args[0]).javaRDD();
+        JavaRDD<String> lines = spark.read().textFile("/basketballDataCSV").javaRDD();
 
         JavaRDD<String> words = lines.flatMap(s -> Arrays.asList(SPACE.split(s)).iterator());
 
