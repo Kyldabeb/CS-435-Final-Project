@@ -1,5 +1,6 @@
 PlayerReduce/target/
 GUI/target/
+nba/
 PlayerReduce/target
 GetID/target
 !.mvn/wrapper/maven-wrapper.jar
