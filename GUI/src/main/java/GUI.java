@@ -70,8 +70,8 @@ public class GUI {
                              "FROM player p " +
                              "JOIN common_player_info cpi ON p.id = cpi.person_id " +
                              "JOIN team t ON cpi.team_id = t.id " +
-                             "WHERE p.full_name = ? " +
-                             "AND (t.nickname = ? OR t.full_name = ?)";
+                             "WHERE p.full_name COLLATE NOCASE = ? " +
+                             "AND (t.nickname COLLATE NOCASE = ? OR t.full_name COLLATE NOCASE = ?)";
 
                 try (Connection conn = DriverManager.getConnection(url);
                      PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -86,7 +86,7 @@ public class GUI {
                             resultLabel.setText("Player ID: " + playerId);
                         } else {
                             // If no result found, try searching by name only
-                            String fallbackSql = "SELECT id AS player_id FROM player WHERE full_name = ?";
+                            String fallbackSql = "SELECT id AS player_id FROM player WHERE full_name COLLATE NOCASE = ?";
                             try (PreparedStatement fallbackPstmt = conn.prepareStatement(fallbackSql)) {
                                 fallbackPstmt.setString(1, playerName);
 
