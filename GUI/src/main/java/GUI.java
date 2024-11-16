@@ -1,6 +1,14 @@
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+
+import java.util.ArrayList;
+
 
 public class GUI {
     public static void main(String[] args) {
@@ -46,8 +54,39 @@ public class GUI {
             public void actionPerformed(ActionEvent e) {
                 String playerName = playerField.getText();
                 String teamName = teamField.getText();
-                
-                resultLabel.setText("Player: " + playerName + ", Team: " + teamName);
+
+                String url = "jdbc:sqlite:nba/nba.sqlite";
+
+                String sql = "SELECT p.id AS player_id FROM players p JOIN common_player_info cpi ON p.id = cpi.player_id JOIN team t ON cpi.team_id = t.id WHERE p.name = '" + playerName + "' AND (t.nickname = '" + teamName + "' OR t.full_name = 'TEAM_NAME');";
+                ArrayList<Integer> players = new ArrayList<Integer>();
+
+                try (Connection conn = DriverManager.getConnection(url);
+                    Statement stmt = conn.createStatement();
+                    ResultSet rs = stmt.executeQuery(sql)) {
+
+                    if (conn != null) {
+                        System.out.println("Connected to SQLite database.");
+                    }
+
+                    while (rs.next()) {
+                        // Retrieve columns by name or index
+                        int id = rs.getInt("id"); // or rs.getInt(1)
+                        players.add(id);
+                    }
+
+                } catch (SQLException ex) {
+                    System.out.println(ex.getMessage());
+                }
+                if (players.size() == 0) {
+                    resultLabel.setText("Player not found");
+                    return;
+                }
+                if (players.size() == 1) {
+                    resultLabel.setText("Player: " + playerName + ", Team: " + teamName + ", Player ID: " + players.get(0));
+                    return;
+                }
+                resultLabel.setText("Multiple players found, please specify");
+                return;
             }
         });
 
