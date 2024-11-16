@@ -1,4 +1,7 @@
-target/
+PlayerReduce/target/
+GUI/target/
+PlayerReduce/target
+GetID/target
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
 !**/src/test/**/target/
