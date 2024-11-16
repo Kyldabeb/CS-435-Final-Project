@@ -2,10 +2,13 @@
 
 echo "Starting the GUI application..."
 
-# Navigate to the directory where the classes are stored (adjust if needed)
-cd GUI/target/classes
+# Get the absolute path to the correct JAR file
+val=$(realpath GUI/target/gui_project-1.0-SNAPSHOT.jar)
 
-# Run the GUI main class
-java GUI
+# Print the JAR path for confirmation
+echo "Using JAR file: $val"
+
+# Run the GUI application using the absolute path
+java -jar "$val"
 
 echo "GUI application started."

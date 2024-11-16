@@ -29,6 +29,7 @@ cd ..
 echo "Compiling GUI Project..."
 cd GUI
 mvn clean install
+mvn clean package
 cd ..
 
 echo "Compilation complete!"
