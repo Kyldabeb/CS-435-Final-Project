@@ -1,6 +1,7 @@
 package org.example;
 
 import javax.swing.*;
+import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.BufferedReader;
@@ -25,7 +26,7 @@ public class GUI {
 
         String jarPath = args[0]; // Path to the Spark Job JAR
         String sparkHome = args[1]; // Path to Spark home
-        String masterUrl = "spark://baghdad.cs.colostate.edu:30276";
+        String masterUrl = "spark://bangkok.cs.colostate.edu:30316";
 
         // Create a JFrame (the main window)
         JFrame frame = new JFrame("Player and Team Input");
@@ -33,8 +34,15 @@ public class GUI {
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         frame.setLayout(null);
 
+
+        JProgressBar progressBar = new JProgressBar();
+        progressBar.setBounds(0, 350, 700, 20);
+        progressBar.setVisible(false);
+        frame.add(progressBar);
+
+
         // Player name input
-        JLabel playerLabel = new JLabel("Enter a Player Name:");
+        JLabel playerLabel = new JLabel("Enter a Player Name test test test:");
         playerLabel.setBounds(50, 20, 200, 20);
         frame.add(playerLabel);
 
@@ -122,89 +130,104 @@ public class GUI {
 
         sqlButton.addActionListener(new ActionListener() {
             @Override
-            public void actionPerformed(ActionEvent e) {
-                if (playerId == -1) {
-                    sqlResultLabel.setText("No Player ID available. Submit valid inputs first.");
-                    return;
-                }
+    public void actionPerformed(ActionEvent e) {
+        if (playerId == -1) {
+            sqlResultLabel.setText("No Player ID available. Submit valid inputs first.");
+            return;
+        }
 
-                String csvPath = "/csv/play_by_play.csv";
-                String hdfsOutputPath = "/output/spark-job-results";
+        final String csvPath = "/csv/play_by_play.csv";
+        final String hdfsOutputPath = "/output/spark-job-results";
 
-                try {
-                    // Delete HDFS output path if it exists
-                    Process deleteProcess = Runtime.getRuntime().exec(
-                            new String[]{"hdfs", "dfs", "-rm", "-r", hdfsOutputPath});
-                    deleteProcess.waitFor();
+        // Show progress bar and disable the button
+        progressBar.setVisible(true);
+        progressBar.setIndeterminate(true);
+        sqlButton.setEnabled(false);
 
-                    // Run Spark job
-                    Process sparkJob = new SparkLauncher()
-                            .setAppResource(jarPath)
-                            .setMainClass("org.example.IDReduce")
-                            .setMaster(masterUrl)
-                            .addAppArgs(csvPath, String.valueOf(playerId), hdfsOutputPath)
-                            .setSparkHome(sparkHome)
-                            .launch();
+        // Run the Spark job in a separate thread
+        new Thread(() -> {
+            try {
+                // Delete HDFS output path if it exists
+                final Process deleteProcess = Runtime.getRuntime().exec(
+                        new String[]{"hdfs", "dfs", "-rm", "-r", hdfsOutputPath});
+                deleteProcess.waitFor();
 
-                    // Monitor Spark job progress (Standard Output)
-                    Thread stdoutThread = new Thread(() -> {
-                        try (BufferedReader reader = new BufferedReader(
-                                new InputStreamReader(sparkJob.getInputStream()))) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                sqlResultLabel.setText(line); // Update the GUI with progress
-                            }
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
+                // Run Spark job
+                final Process sparkJob = new SparkLauncher()
+                        .setAppResource(jarPath)
+                        .setMainClass("org.example.IDReduce")
+                        .setMaster(masterUrl)
+                        .addAppArgs(csvPath, String.valueOf(playerId), hdfsOutputPath)
+                        .setSparkHome(sparkHome)
+                        .launch();
+
+                // Monitor Spark job progress (Standard Output)
+                Thread stdoutThread = new Thread(() -> {
+                    try (BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(sparkJob.getInputStream()))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            final String finalLine = line;
+                            SwingUtilities.invokeLater(() -> sqlResultLabel.setText(finalLine)); // Update the GUI
                         }
-                    });
-
-                    // Monitor Spark job errors (Standard Error)
-                    Thread stderrThread = new Thread(() -> {
-                        try (BufferedReader reader = new BufferedReader(
-                                new InputStreamReader(sparkJob.getErrorStream()))) {
-                            String line;
-                            while ((line = reader.readLine()) != null) {
-                                System.err.println(line); // Log errors to console
-                            }
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                        }
-                    });
-
-                    stdoutThread.start();
-                    stderrThread.start();
-
-                    // Wait for job completion
-                    int exitCode = sparkJob.waitFor();
-                    stdoutThread.join();
-                    stderrThread.join();
-
-                    if (exitCode == 0) {
-                        // Fetch first 5 lines from the output file
-                        Process fetchOutput = Runtime.getRuntime().exec(
-                                new String[]{"hdfs", "dfs", "-cat", hdfsOutputPath + "/part-*"});
-                        BufferedReader outputReader = new BufferedReader(
-                                new InputStreamReader(fetchOutput.getInputStream()));
-                        StringBuilder result = new StringBuilder("<html>");
-                        for (int i = 0; i < 5; i++) {
-                            String line = outputReader.readLine();
-                            if (line != null) {
-                                result.append(line).append("<br>");
-                            } else {
-                                break;
-                            }
-                        }
-                        result.append("</html>");
-                        sqlResultLabel.setText(result.toString());
-                    } else {
-                        sqlResultLabel.setText("Spark job failed with exit code: " + exitCode);
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
                     }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                    sqlResultLabel.setText("Error running Spark job: " + ex.getMessage());
+                });
+
+                // Monitor Spark job errors (Standard Error)
+                Thread stderrThread = new Thread(() -> {
+                    try (BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(sparkJob.getErrorStream()))) {
+                        String line;
+                        while ((line = reader.readLine()) != null) {
+                            System.err.println(line); // Log errors to console
+                        }
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                });
+
+                stdoutThread.start();
+                stderrThread.start();
+
+                // Wait for job completion
+                int exitCode = sparkJob.waitFor();
+                stdoutThread.join();
+                stderrThread.join();
+
+                if (exitCode == 0) {
+                    // Fetch first 5 lines from the output file
+                    Process fetchOutput = Runtime.getRuntime().exec(
+                            new String[]{"hdfs", "dfs", "-cat", hdfsOutputPath + "/part-*"});
+                    BufferedReader outputReader = new BufferedReader(
+                            new InputStreamReader(fetchOutput.getInputStream()));
+                    StringBuilder result = new StringBuilder("<html>");
+                    for (int i = 0; i < 5; i++) {
+                        String line = outputReader.readLine();
+                        if (line != null) {
+                            result.append(line).append("<br>");
+                        } else {
+                            break;
+                        }
+                    }
+                    result.append("</html>");
+                    SwingUtilities.invokeLater(() -> sqlResultLabel.setText(result.toString()));
+                } else {
+                    SwingUtilities.invokeLater(() -> sqlResultLabel.setText("Spark job failed with exit code: " + exitCode));
                 }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+                SwingUtilities.invokeLater(() -> sqlResultLabel.setText("Error running Spark job: " + ex.getMessage()));
+            } finally {
+                // Hide progress bar and enable the button
+                SwingUtilities.invokeLater(() -> {
+                    progressBar.setVisible(false);
+                    sqlButton.setEnabled(true);
+                });
             }
+        }).start();
+        }
         });
 
         frame.setVisible(true);
