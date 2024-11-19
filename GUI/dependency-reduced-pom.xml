@@ -2,7 +2,7 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.example</groupId>
-  <artifactId>gui_project</artifactId>
+  <artifactId>HeatMap</artifactId>
   <name>GUI Project</name>
   <version>1.0-SNAPSHOT</version>
   <description>A Java GUI application</description>
@@ -29,7 +29,7 @@
         <artifactId>exec-maven-plugin</artifactId>
         <version>3.0.0</version>
         <configuration>
-          <mainClass>GUI</mainClass>
+          <mainClass>org.example.GUI</mainClass>
         </configuration>
       </plugin>
       <plugin>
@@ -44,7 +44,7 @@
             <configuration>
               <transformers>
                 <transformer>
-                  <mainClass>GUI</mainClass>
+                  <mainClass>org.example.GUI</mainClass>
                 </transformer>
               </transformers>
             </configuration>

@@ -1,35 +1,27 @@
 #!/bin/bash
-echo "Compiling all sub-projects..."
+echo "Compiling all projects..."
 
-# Compile Spark Project
-echo "Compiling Spark Id Project..."
-cd GetID
-mvn clean install
+
+# Compile GUI Project
+echo "Compiling IDReduce Project..."
+cd IDReduce
+
+# Build GUI Project
+echo "Building IDReduce Project..."
+mvn install || { echo "Failed to install GUI dependencies"; exit 1; }
+mvn package || { echo "Failed to package GUI"; exit 1; }
+
 cd ..
-
-# Compile Spark Project
-echo "Compiling Spark Project..."
-cd PlayerReduce
-mvn clean install
-cd ..
-
-# Compile First MapReduce Project
-# echo "Compiling First MapReduce Project..."
-# cd mapreduce_project_1
-# mvn clean install
-# cd ..
-
-# Compile Second MapReduce Project
-# echo "Compiling Second MapReduce Project..."
-# cd mapreduce_project_2
-# mvn clean install
-# cd ..
 
 # Compile GUI Project
 echo "Compiling GUI Project..."
 cd GUI
-mvn clean install
-mvn clean package
+
+# Build GUI Project
+echo "Building GUI Project..."
+mvn install || { echo "Failed to install GUI dependencies"; exit 1; }
+mvn package || { echo "Failed to package GUI"; exit 1; }
+
 cd ..
 
 echo "Compilation complete!"
