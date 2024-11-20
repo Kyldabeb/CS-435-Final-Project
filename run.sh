@@ -23,6 +23,7 @@ fi
 # Delete existing HDFS output if it exists
 echo "Checking HDFS output path..."
 hadoop fs -rm -r "$HDFS_OUTPUT_PATH" 2>/dev/null
+hadoop fs -rm -r "/output/heatmap_data" > /dev/null 2>&1
 echo "HDFS output path cleared."
 
 # Run the GUI application and pass required arguments
