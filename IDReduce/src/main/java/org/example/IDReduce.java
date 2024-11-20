@@ -40,6 +40,25 @@ public class IDReduce {
                 return zScores;
         }
 
+        public static Map<String, Double> calcZScoresString(Map<String, Long> data){
+                double mean = data.values().stream().mapToLong(Long::longValue).average().orElse(0.0);
+
+                // Step 2: Calculate the standard deviation (σ)
+                double variance = data.values().stream()
+                               .mapToDouble(value -> Math.pow(value - mean, 2))
+                               .average().orElse(0.0);
+                double standardDeviation = Math.sqrt(variance);
+
+                // Step 3: Calculate Z-scores for each entry (Z = (X - μ) / σ)
+                Map<String, Double> zScores = new HashMap<>();
+                for (Map.Entry<String, Long> entry : data.entrySet()) {
+                        double zScore = (entry.getValue() - mean) / standardDeviation;
+                        zScores.put(entry.getKey(), zScore);  // Store the z-score for the corresponding score
+                }
+
+                return zScores;
+        }
+
     // Function to create a regex pattern for keywords
     public static String createPattern(List<String> keywords) {
         return ".*\\b(" + String.join("|", keywords) + ")\\b.*";
@@ -253,16 +272,14 @@ public class IDReduce {
                 Dataset<Row> ha_result = scoredDF2.groupBy("home_or_away")
                         .agg(sum("sum").alias("total_score"));
 
-                /* 
-                Map<Long, Long> haScores = ha_result.collectAsList().stream()
+                 
+                Map<String, Long> haScores = ha_result.collectAsList().stream()
                         .collect(Collectors.toMap(
-                                row -> Long.valueOf(row.getAs("").toString()),  // Cast period to Long
+                                row -> row.getAs("home_or_away").toString(),  // Cast period to Long
                                 row -> Long.valueOf(row.getAs("total_score").toString()) // Cast total_score to Long
                         ));
                 
-                Map<Long, Double> zHome = calcZScores(haScores);
-
-                */
+                Map<String, Double> zHome = calcZScoresString(haScores);
                 
 
                 
@@ -282,15 +299,15 @@ public class IDReduce {
             }
             Row row2 = RowFactory.create("Period", myContents);
 
-            /* 
+            
             myContents = "";
-            for (Long i : zHome.keySet()){
+            for (String i : zHome.keySet()){
                 myContents += "(" + i + " : " + zHome.get(i) + ")";
             }
             Row row3 = RowFactory.create("Home/Away", myContents);
-            */
+            
 
-            List<Row> rows = Arrays.asList(row, row2);
+            List<Row> rows = Arrays.asList(row, row2, row3);
 
             StructType schema = new StructType()
                 .add("id", DataTypes.StringType)
