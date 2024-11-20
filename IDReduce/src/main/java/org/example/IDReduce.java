@@ -2,14 +2,43 @@ package org.example;
 
 import org.apache.spark.sql.Dataset;
 import org.apache.spark.sql.Row;
+import org.apache.spark.sql.RowFactory;
 import org.apache.spark.sql.SparkSession;
+import org.apache.spark.sql.functions;
+import org.apache.spark.sql.expressions.Window;
+import org.apache.spark.sql.expressions.WindowSpec;
+import org.apache.spark.sql.types.DataTypes;
+import org.apache.spark.sql.types.StructType;
+import java.util.stream.Collectors;
+import java.util.*;
 
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 
 import static org.apache.spark.sql.functions.*;
 
 public class IDReduce {
+
+        public static Map<Long, Double> calcZScores(Map<Long, Long> data){
+                double mean = data.values().stream().mapToLong(Long::longValue).average().orElse(0.0);
+
+                // Step 2: Calculate the standard deviation (σ)
+                double variance = data.values().stream()
+                               .mapToDouble(value -> Math.pow(value - mean, 2))
+                               .average().orElse(0.0);
+                double standardDeviation = Math.sqrt(variance);
+
+                // Step 3: Calculate Z-scores for each entry (Z = (X - μ) / σ)
+                Map<Long, Double> zScores = new HashMap<>();
+                for (Map.Entry<Long, Long> entry : data.entrySet()) {
+                        double zScore = (entry.getValue() - mean) / standardDeviation;
+                        zScores.put(entry.getKey(), zScore);  // Store the z-score for the corresponding score
+                }
+
+                return zScores;
+        }
 
     // Function to create a regex pattern for keywords
     public static String createPattern(List<String> keywords) {
@@ -84,7 +113,7 @@ public class IDReduce {
 
             // Select only the required columns
             Dataset<Row> finalOutput = filtered.select(
-                    "game_id", "period", "pctimestring", "homedescription", "visitordescription", "neutraldescription", "play_impact"
+                    "game_id", "period", "pctimestring", "homedescription", "visitordescription", "neutraldescription", "play_impact", "score"
             );
 
             finalOutput = finalOutput.filter(
@@ -92,9 +121,193 @@ public class IDReduce {
                             .or(col("visitordescription").isNotNull().and(col("visitordescription").notEqual("")))
                             .or(col("neutraldescription").isNotNull().and(col("neutraldescription").notEqual("")))
             );
+            
+            //Fix scores
+
+            //Determine home or away
+
+            Dataset<Row> gameteam = df.filter(
+                df.col("player1_id").equalTo(playerId)
+                .or(df.col("player2_id").equalTo(playerId))
+                .or(df.col("player3_id").equalTo(playerId))
+            ).withColumn("team_id_for_target_player", 
+            functions.when(df.col("player1_id").equalTo(playerId), df.col("player1_team_id"))
+                .when(df.col("player2_id").equalTo(playerId), df.col("player2_team_id"))
+                .when(df.col("player3_id").equalTo(playerId), df.col("player3_team_id"))
+            );
+        
+
+            Dataset<Row> castedResult = gameteam.withColumn("game_id", gameteam.col("game_id").cast("long"))
+                                                   .withColumn("team_id_for_target_player", gameteam.col("team_id_for_target_player").cast("int"));
+
+            Dataset<Row> result = castedResult.groupBy("game_id")
+                .agg(functions.first("team_id_for_target_player").alias("team_id"))
+                .select("game_id", "team_id");
+                
+           Dataset<Row> game_summary = spark.read()
+           .option("header", "true") // Assuming the CSV file has headers
+           .csv("/csv/game_summary.csv");
+
+           Dataset<Row> game_info = game_summary
+                .withColumnRenamed("game_id", "game_summary_game_id");
+
+           Dataset<Row> final_info = result.join(game_info, result.col("game_id").equalTo(game_info.col("game_summary_game_id")),"left")
+                .withColumn("home_or_away", 
+                functions.when(result.col("team_id").equalTo(game_info.col("home_team_id")), functions.lit("home"))
+                        .otherwise(functions.when(result.col("team_id").equalTo(game_info.col("visitor_team_id")), functions.lit("away"))
+                                .otherwise(functions.lit("unknown"))));
+        
+        Dataset<Row> outputDataset = final_info.select("game_id", "home_or_away");
+
+        Dataset<Row> o_d = outputDataset
+                .withColumnRenamed("game_id", "game_summary_game_id");
+        Dataset<Row> withAway = finalOutput.join(o_d, finalOutput.col("game_id").equalTo(o_d.col("game_summary_game_id")),"left");
+                
+
+        //fix scores
+        WindowSpec scoreWindow = Window.partitionBy("game_id")
+                .orderBy(
+                        functions.col("period").asc(),
+                        functions.col("pctimestring").desc() 
+                );
+        Dataset<Row> updatedDataset = withAway.withColumn(
+                "filled_score",
+                functions.last("score", true).over(scoreWindow)
+        );
+
+        
+        Dataset<Row> datasetWithScores = updatedDataset
+            .withColumn("home_score", functions.expr("split(filled_score, '-')[0]").cast("int"))
+            .withColumn("away_score", functions.expr("split(filled_score, '-')[1]").cast("int"));
+            
+        
+        Dataset<Row> datasetWithScoreDef = datasetWithScores.withColumn(
+        "score_def",
+                functions.when(functions.col("home_or_away").equalTo("home"),
+                   functions.col("home_score").minus(functions.col("away_score")))
+                .when(functions.col("home_or_away").equalTo("away"),
+                   functions.col("away_score").minus(functions.col("home_score")))
+                .otherwise(functions.lit(0)) // Assign a default value for "unknown" rows
+);
+
+        
+            //Calculate z-scores
+        
+            //Score bins
+            int[] periods = {1, 2, 3, 4};
+            //Quarter bins
+
+                Dataset<Row> withRange = datasetWithScoreDef.withColumn(
+                "score_range",
+                        functions.floor(functions.col("score_def").divide(5)).multiply(5)
+                );
+
+                
+                Dataset<Row> aggregated = withRange.groupBy("score_range", "play_impact").count();
+
+
+                Dataset<Row> pivoted = aggregated.groupBy("score_range")
+                .pivot("play_impact", Arrays.asList("Good", "Bad"))
+                .sum("count")
+                .na().fill(0);
+
+
+                Dataset<Row> finalScores = pivoted.withColumn(
+                "total",
+                        functions.col("Good").minus(functions.col("Bad"))
+                );
+
+
+                Map<Long, Long> scores = finalScores.select("score_range", "total")
+                .collectAsList()
+                .stream()
+                .collect(Collectors.toMap(
+                        row -> row.getAs("score_range"),  // Key: score range
+                        row -> ((Long) row.getAs("total")),    // Value: total score
+                        Long::sum
+                ));
+
+                Map<Long, Double> zScores = calcZScores(scores);
+
+                //Find the sum for periods
+                Dataset<Row> scoredDF = finalOutput.withColumn("sum", when(col("play_impact").equalTo("Good"), 1)
+                        .when(col("play_impact").equalTo("Bad"), -1)
+                        .otherwise(0)); 
+
+                Dataset<Row> period_result = scoredDF.groupBy("period")
+                        .agg(sum("sum").alias("total_score"));
+
+                Map<Long, Long> periodScores = period_result.collectAsList().stream()
+                        .collect(Collectors.toMap(
+                                row -> Long.valueOf(row.getAs("period").toString()),  // Cast period to Long
+                                row -> Long.valueOf(row.getAs("total_score").toString()) // Cast total_score to Long
+                        ));
+                
+                Map<Long, Double> zPeriod = calcZScores(periodScores);
+
+                Dataset<Row> scoredDF2 = datasetWithScores.withColumn("sum", when(col("play_impact").equalTo("Good"), 1)
+                        .when(col("play_impact").equalTo("Bad"), -1)
+                        .otherwise(0)); 
+
+                //Find the sum for home/away
+                Dataset<Row> ha_result = scoredDF2.groupBy("home_or_away")
+                        .agg(sum("sum").alias("total_score"));
+
+                /* 
+                Map<Long, Long> haScores = ha_result.collectAsList().stream()
+                        .collect(Collectors.toMap(
+                                row -> Long.valueOf(row.getAs("").toString()),  // Cast period to Long
+                                row -> Long.valueOf(row.getAs("total_score").toString()) // Cast total_score to Long
+                        ));
+                
+                Map<Long, Double> zHome = calcZScores(haScores);
+
+                */
+                
+
+                
+
+
+
+
+            String myContents = "";
+            for (Long i : zScores.keySet()){
+                myContents += "(" + i + " : " + zScores.get(i) + ")";
+            }
+            Row row = RowFactory.create("Score", myContents);
+
+            myContents = "";
+            for (Long i : zPeriod.keySet()){
+                myContents += "(" + i + " : " + zPeriod.get(i) + ")";
+            }
+            Row row2 = RowFactory.create("Period", myContents);
+
+            /* 
+            myContents = "";
+            for (Long i : zHome.keySet()){
+                myContents += "(" + i + " : " + zHome.get(i) + ")";
+            }
+            Row row3 = RowFactory.create("Home/Away", myContents);
+            */
+
+            List<Row> rows = Arrays.asList(row, row2);
+
+            StructType schema = new StructType()
+                .add("id", DataTypes.StringType)
+                .add("contents", DataTypes.StringType);
+
+        
+                Dataset<Row> ugggh = spark.createDataFrame(rows, schema);
+                
+                ugggh.coalesce(1)
+                    .write()
+                    .option("header", "true")
+                    .csv("/output/heatmap_data");
+
+            
 
             // Write the filtered results to the specified output path
-            finalOutput.coalesce(1)
+                datasetWithScoreDef.coalesce(1)
                     .write()
                     .option("header", "true")
                     .csv(outputPath);

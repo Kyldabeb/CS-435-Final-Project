@@ -5,9 +5,9 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="468eff12-5c47-49e6-86dc-87c39a536774" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/example/test.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/example/PlayerReduce.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/example/PlayerReduce.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../GUI/src/main/java/org/example/.nfs0000000003860f540000019f" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../IDReduce/src/main/java/org/example/.nfs00000000063200bc000001a0" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/../IDReduce/src/main/java/org/example/IDReduce.java" beforeDir="false" afterPath="$PROJECT_DIR$/../IDReduce/src/main/java/org/example/IDReduce.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -17,9 +17,9 @@
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 8
-}]]></component>
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 8
+}</component>
   <component name="ProjectId" id="2p3ALY7K3grvXMzQlxWnps48cJY" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -30,9 +30,9 @@
     "Application.BasicTest.executor": "Run",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "SHARE_PROJECT_CONFIGURATION_FILES": "true",
-    "git-widget-placeholder": "main",
+    "git-widget-placeholder": "GUIUpdate",
     "kotlin-language-version-configured": "true",
-    "last_opened_file_path": "/s/parsons/n/under/motley3/345Term/CS-435-Final-Project/PlayerReduce",
+    "last_opened_file_path": "/s/parsons/n/under/motley3/345Term/CS-435-Final-Project/PlayerReduce/target/classes/org/example/PlayerReduce.class",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -68,6 +68,7 @@
       <option name="presentableId" value="Default" />
       <updated>1731984329807</updated>
       <workItem from="1731984330811" duration="2740000" />
+      <workItem from="1732081457693" duration="94000" />
     </task>
     <servers />
   </component>
