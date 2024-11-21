@@ -2,196 +2,159 @@ package org.example;
 
 import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
-import org.jfree.chart.axis.NumberAxis;
+import org.jfree.chart.axis.*;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.chart.renderer.PaintScale;
-import org.jfree.chart.renderer.xy.XYBlockRenderer;
-import org.jfree.data.xy.DefaultXYDataset;
 import org.jfree.chart.renderer.LookupPaintScale;
+import org.jfree.chart.renderer.xy.XYBlockRenderer;
+import org.jfree.chart.title.PaintScaleLegend;
+import org.jfree.data.xy.DefaultXYZDataset;
+import org.jfree.data.xy.XYZDataset;
+import org.jfree.chart.ui.RectangleEdge;
 
 import javax.swing.*;
 import java.awt.*;
-import java.io.*;
-import java.util.*;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.List;
 
 public class VisualizationWindow extends JFrame {
 
+    private double minZ = Double.MAX_VALUE; // Minimum Z value
+    private double maxZ = Double.MIN_VALUE; // Maximum Z value
+
     public VisualizationWindow(String visualizationType, String hdfsOutputPath) {
-        // Set window properties
-        setTitle("Visualization: " + visualizationType);
-        setSize(800, 600);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
-        setLayout(new BorderLayout());
+        super("JFreeChart Heatmap Visualization");
 
-        // Generate temporary CSV file with mock data
-        File tempFile = createTempCSV();
+        // Create dataset from HDFS
+        XYZDataset dataset = createDatasetFromHDFS(hdfsOutputPath, visualizationType);
 
-        // Fetch and process data from the temporary CSV file
-        Map<String, java.util.List<Pair<Integer, Integer>>> outputData = fetchAndParseLocalCSV(tempFile);
-
-        // Uncomment the line below to fetch from HDFS instead of local CSV (for final integration)
-        // Map<String, java.util.List<Pair<Integer, Integer>>> outputData = fetchAndParseHDFSData(hdfsOutputPath);
-
-        if (outputData.isEmpty()) {
+        if (dataset == null) {
             JOptionPane.showMessageDialog(this, "No data found for visualization.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        // Generate heat map chart
-        if (outputData.containsKey(visualizationType)) {
-            JFreeChart heatMap = createHeatMap(visualizationType, outputData.get(visualizationType));
-            ChartPanel chartPanel = new ChartPanel(heatMap);
-            add(chartPanel, BorderLayout.CENTER);
-        } else {
-            JOptionPane.showMessageDialog(this, "No data available for selected visualization type.", "Error", JOptionPane.ERROR_MESSAGE);
-        }
+        // Create the heatmap chart
+        final JFreeChart chart = createChart(dataset);
+        setContentPane(new ChartPanel(chart));
 
-        // Close button
-        JButton closeButton = new JButton("Close");
-        closeButton.addActionListener(e -> dispose());
-        add(closeButton, BorderLayout.SOUTH);
+        setSize(800, 600);
+        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
     }
 
-    // Create temporary CSV file with mock data
-    private File createTempCSV() {
-        try {
-            File tempFile = File.createTempFile("mock_data", ".csv");
-            tempFile.deleteOnExit(); // Delete the file on JVM exit
+    private JFreeChart createChart(XYZDataset dataset) {
+        // X-Axis for "Game Context"
+        NumberAxis xAxis = new NumberAxis("Game Context");
+        xAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+        xAxis.setLowerMargin(0);
+        xAxis.setUpperMargin(0);
 
-            try (BufferedWriter writer = new BufferedWriter(new FileWriter(tempFile))) {
-                writer.write("Score Deficit,-15:25,-10:20,-5:15,0:10,5:5,10:0\n");
-                writer.write("Period,1:15,2:10,3:20,4:5\n");
-                writer.write("Team,1:30,2:15,3:20,4:25\n");
-                writer.write("Home vs Away,1:35,2:10,3:20,4:15\n");
-            }
-            return tempFile;
-        } catch (IOException ex) {
-            ex.printStackTrace();
-            throw new RuntimeException("Failed to create temporary CSV file for testing.");
-        }
+        // Y-Axis for "Z-Score-Dependent Height"
+        NumberAxis yAxis = new NumberAxis("Performance Z-Score");
+        yAxis.setStandardTickUnits(NumberAxis.createStandardTickUnits());
+        yAxis.setLowerMargin(0);
+        yAxis.setUpperMargin(0);
+
+        // Paint scale dynamically based on min and max Z values
+        LookupPaintScale paintScale = new LookupPaintScale(minZ, maxZ, Color.BLUE); // Default: Blue
+        paintScale.add(minZ, Color.BLUE);
+        paintScale.add((minZ + maxZ) / 2, Color.GREEN);
+        paintScale.add(maxZ, Color.RED); // Ensure max Z corresponds to Red
+
+        // Paint scale legend with explicit range
+        NumberAxis scaleAxis = new NumberAxis("Z-Score");
+        scaleAxis.setRange(minZ, maxZ); // Explicitly set range to match Z values
+        PaintScaleLegend legend = new PaintScaleLegend(paintScale, scaleAxis);
+        legend.setPosition(RectangleEdge.RIGHT);
+        legend.setAxisLocation(AxisLocation.TOP_OR_RIGHT);
+        legend.setMargin(50.0, 20.0, 80.0, 0.0);
+
+        // Renderer and plot
+        XYBlockRenderer renderer = new XYBlockRenderer();
+        renderer.setPaintScale(paintScale);
+
+        XYPlot plot = new XYPlot(dataset, xAxis, yAxis, renderer);
+
+        JFreeChart chart = new JFreeChart("Heatmap Visualization", JFreeChart.DEFAULT_TITLE_FONT, plot, false);
+        chart.addSubtitle(legend);
+
+        return chart;
     }
 
-    // Fetch and parse local CSV file
-    private Map<String, java.util.List<Pair<Integer, Integer>>> fetchAndParseLocalCSV(File csvFile) {
-        Map<String, java.util.List<Pair<Integer, Integer>>> data = new HashMap<>();
-
-        try (BufferedReader reader = new BufferedReader(new FileReader(csvFile))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String[] parts = line.split(",", 2);
-                if (parts.length == 2) {
-                    String key = parts[0].trim();
-                    java.util.List<Pair<Integer, Integer>> values = parseKeyValuePairs(parts[1].trim());
-                    data.put(key, values);
-                }
-            }
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-
-        return data;
-    }
-
-    // Parse key-value pairs from a line
-    private java.util.List<Pair<Integer, Integer>> parseKeyValuePairs(String input) {
-        java.util.List<Pair<Integer, Integer>> pairs = new ArrayList<>();
-        String[] entries = input.split(",");
-        for (String entry : entries) {
-            entry = entry.trim().replace("(", "").replace(")", "");
-            String[] parts = entry.split(":");
-            if (parts.length == 2) {
-                int key = Integer.parseInt(parts[0].trim());
-                int value = Integer.parseInt(parts[1].trim());
-                pairs.add(new Pair<>(key, value));
-            }
-        }
-        return pairs;
-    }
-
-    // Fetch and parse data from HDFS
-    private Map<String, java.util.List<Pair<Integer, Integer>>> fetchAndParseHDFSData(String hdfsOutputPath) {
-        Map<String, java.util.List<Pair<Integer, Integer>>> data = new HashMap<>();
-
+    private XYZDataset createDatasetFromHDFS(String hdfsOutputPath, String visualizationType) {
         try {
             Process fetchOutput = Runtime.getRuntime().exec(new String[]{"hdfs", "dfs", "-cat", hdfsOutputPath + "/part-*"});
             BufferedReader outputReader = new BufferedReader(new InputStreamReader(fetchOutput.getInputStream()));
+
+            List<Double> xValues = new ArrayList<>();
+            List<Double> yValues = new ArrayList<>();
+            List<Double> zValues = new ArrayList<>();
+
             String line;
             while ((line = outputReader.readLine()) != null) {
                 String[] parts = line.split(",", 2);
-                if (parts.length == 2) {
-                    String key = parts[0].trim();
-                    java.util.List<Pair<Integer, Integer>> values = parseKeyValuePairs(parts[1].trim());
-                    data.put(key, values);
+                if (parts.length == 2 && parts[0].trim().equals(visualizationType)) {
+                    String[] pairs = parts[1].split("\\)\\(");
+                    for (String pair : pairs) {
+                        pair = pair.replace("(", "").replace(")", "").trim();
+                        String[] valueParts = pair.split(":");
+                        if (valueParts.length == 2) {
+                            try {
+                                double x;
+                                double z = Double.parseDouble(valueParts[1].trim()); // Always use the value for Z
+
+                                // Handle Home/Away conversion for the key
+                                if (visualizationType.equals("Home/Away")) {
+                                    String keyString = valueParts[0].trim().toLowerCase();
+                                    if (keyString.equals("home")) {
+                                        x = 1.0;
+                                    } else if (keyString.equals("away")) {
+                                        x = 0.0;
+                                    } else if (keyString.equals("unknown")) {
+                                        x = 2.0;
+                                    } else {
+                                        throw new NumberFormatException("Invalid Home/Away key: " + keyString);
+                                    }
+                                } else {
+                                    x = Double.parseDouble(valueParts[0].trim());
+                                }
+
+                                xValues.add(x);
+                                yValues.add(Math.abs(z)); // Height proportional to Z-score
+                                zValues.add(z);
+
+                                // Track min and max Z values
+                                minZ = Math.min(minZ, z);
+                                maxZ = Math.max(maxZ, z);
+                            } catch (NumberFormatException ex) {
+                                System.err.println("Skipping invalid value: " + pair);
+                            }
+                        }
+                    }
                 }
             }
-        } catch (IOException ex) {
+
+            if (xValues.isEmpty() || yValues.isEmpty() || zValues.isEmpty()) {
+                return null;
+            }
+
+            double[] xArray = xValues.stream().mapToDouble(Double::doubleValue).toArray();
+            double[] yArray = yValues.stream().mapToDouble(Double::doubleValue).toArray();
+            double[] zArray = zValues.stream().mapToDouble(Double::doubleValue).toArray();
+
+            DefaultXYZDataset dataset = new DefaultXYZDataset();
+            dataset.addSeries("Heatmap Data", new double[][]{xArray, yArray, zArray});
+            return dataset;
+
+        } catch (Exception ex) {
             ex.printStackTrace();
+            return null;
         }
-
-        return data;
     }
 
-    // Create heat map visualization
-    private JFreeChart createHeatMap(String title, java.util.List<Pair<Integer, Integer>> data) {
-        // Prepare data for DefaultXYZDataset
-        double[] xValues = new double[data.size()];
-        double[] yValues = new double[data.size()];
-        double[] zValues = new double[data.size()];
-
-        for (int i = 0; i < data.size(); i++) {
-            Pair<Integer, Integer> pair = data.get(i);
-            xValues[i] = pair.getKey(); // X-axis (e.g., score range or period)
-            yValues[i] = 0; // Single row
-            zValues[i] = pair.getValue(); // Z-axis (performance score)
-        }
-
-        // Use DefaultXYZDataset to handle X, Y, Z values
-        org.jfree.data.xy.DefaultXYZDataset dataset = new org.jfree.data.xy.DefaultXYZDataset();
-        dataset.addSeries("Heat Map Data", new double[][]{xValues, yValues, zValues});
-
-        // Create renderer and configure paint scale
-        XYBlockRenderer renderer = new XYBlockRenderer();
-        LookupPaintScale scale = new LookupPaintScale(0.0, 40.0, Color.BLACK);
-        scale.add(10, Color.BLUE);
-        scale.add(20, Color.GREEN);
-        scale.add(30, Color.YELLOW);
-        scale.add(40, Color.RED);
-        renderer.setPaintScale(scale);
-        renderer.setBlockHeight(1.0);
-        renderer.setBlockWidth(5.0);
-
-        // Configure axes
-        NumberAxis xAxis = new NumberAxis("Game Context");
-        NumberAxis yAxis = new NumberAxis("Performance (Z-Scores)");
-        xAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
-        yAxis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
-
-        // Create plot and chart
-        XYPlot plot = new XYPlot(dataset, xAxis, yAxis, renderer);
-        plot.setBackgroundPaint(Color.WHITE);
-
-        return new JFreeChart(title, JFreeChart.DEFAULT_TITLE_FONT, plot, false);
-    }
-
-
-
-
-    // Pair class to hold key-value pairs
-    public static class Pair<K, V> {
-        private final K key;
-        private final V value;
-
-        public Pair(K key, V value) {
-            this.key = key;
-            this.value = value;
-        }
-
-        public K getKey() {
-            return key;
-        }
-
-        public V getValue() {
-            return value;
-        }
+    public static void main(String[] args) {
+        VisualizationWindow demo = new VisualizationWindow("Home/Away", "/path/to/hdfs/output");
+        demo.pack();
+        demo.setVisible(true);
     }
 }

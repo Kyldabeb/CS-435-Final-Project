@@ -15,8 +15,10 @@ import java.util.HashSet;
 import java.util.Set;
 
 import org.apache.spark.launcher.SparkLauncher;
+import org.example.VisualizationWindow;
 
 public class GUI {
+    private static String hdfsOutputPath = "/output/spark-job-results";
     public static int playerId = -1;
 
     public static void main(String[] args) {
@@ -28,7 +30,7 @@ public class GUI {
 
         String jarPath = args[0]; // Path to the Spark Job JAR
         String sparkHome = args[1]; // Path to Spark home
-        String masterUrl = "spark://bangkok.cs.colostate.edu:30316";
+        String masterUrl = "spark://baghdad.cs.colostate.edu:30276";
 
         // Create a JFrame (the main window)
         JFrame frame = new JFrame("Player and Team Input");
@@ -83,8 +85,9 @@ public class GUI {
         visualizeButton.setVisible(false); // Initially hidden
         frame.add(visualizeButton);
 
-        String[] visualizationOptions = {"Bar Chart", "Heatmap", "Line Graph"};
+        String[] visualizationOptions = {"Score", "Period", "Home/Away"};
         JComboBox<String> visualizationDropdown = new JComboBox<>(visualizationOptions);
+
 
         // Position the dropdown next to the button
         visualizationDropdown.setBounds(
@@ -282,8 +285,13 @@ public class GUI {
 
     // Visualization button action
     visualizeButton.addActionListener(e -> {
-     JOptionPane.showMessageDialog(frame, "Visualization created!");
+        String selectedVisualization = (String) visualizationDropdown.getSelectedItem();
+        SwingUtilities.invokeLater(() -> {
+            new VisualizationWindow(selectedVisualization, "/output/heatmap_data").setVisible(true);
+        });
     });
+
+
 
         frame.setVisible(true);
     }
