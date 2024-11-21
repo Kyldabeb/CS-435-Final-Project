@@ -54,7 +54,7 @@ public class GUI {
         frame.add(playerField);
 
         // Team name input
-        JLabel teamLabel = new JLabel("Enter a Team Name:");
+        JLabel teamLabel = new JLabel("Enter most recent team:");
         teamLabel.setBounds(50, 70, 200, 20);
         frame.add(teamLabel);
 
@@ -72,7 +72,7 @@ public class GUI {
         frame.add(resultLabel);
 
         // SQL testing button
-        JButton sqlButton = new JButton("Run SQL");
+        JButton sqlButton = new JButton("Run Job");
         sqlButton.setBounds(250, 200, 100, 30);
         frame.add(sqlButton);
 
