@@ -153,7 +153,7 @@ public class VisualizationWindow extends JFrame {
     }
 
     public static void main(String[] args) {
-        VisualizationWindow demo = new VisualizationWindow("Home/Away", "/path/to/hdfs/output");
+        VisualizationWindow demo = new VisualizationWindow("Home/Away", "");
         demo.pack();
         demo.setVisible(true);
     }

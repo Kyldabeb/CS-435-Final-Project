@@ -45,7 +45,7 @@ public class GUI {
         frame.add(progressBar);
 
         // Player name input
-        JLabel playerLabel = new JLabel("Enter a Player Name test test test:");
+        JLabel playerLabel = new JLabel("Enter a Player Name:");
         playerLabel.setBounds(50, 20, 200, 20);
         frame.add(playerLabel);
 
@@ -237,7 +237,7 @@ public class GUI {
         // Visualization button action
         visualizeButton.addActionListener(e -> {
             String selectedVisualization = (String) visualizationDropdown.getSelectedItem();
-            SwingUtilities.invokeLater(() -> new VisualizationWindow(selectedVisualization, hdfsOutputPath).setVisible(true));
+            SwingUtilities.invokeLater(() -> new VisualizationWindow(selectedVisualization, "/output/heatmap_data/").setVisible(true));
         });
 
         frame.setVisible(true);
