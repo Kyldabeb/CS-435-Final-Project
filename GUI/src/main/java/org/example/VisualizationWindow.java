@@ -20,8 +20,8 @@ import java.util.List;
 
 public class VisualizationWindow extends JFrame {
 
-    private double minZ = Double.MAX_VALUE; // Minimum Z value
-    private double maxZ = Double.MIN_VALUE; // Maximum Z value
+    private double minZ = Double.MAX_VALUE;
+    private double maxZ = Double.MIN_VALUE;
 
     public VisualizationWindow(String visualizationType, String hdfsOutputPath) {
         super("JFreeChart Heatmap Visualization");
@@ -56,14 +56,14 @@ public class VisualizationWindow extends JFrame {
         yAxis.setUpperMargin(0);
 
         // Paint scale dynamically based on min and max Z values
-        LookupPaintScale paintScale = new LookupPaintScale(minZ, maxZ, Color.BLUE); // Default: Blue
+        LookupPaintScale paintScale = new LookupPaintScale(minZ, maxZ, Color.BLUE); 
         paintScale.add(minZ, Color.BLUE);
         paintScale.add((minZ + maxZ) / 2, Color.GREEN);
-        paintScale.add(maxZ, Color.RED); // Ensure max Z corresponds to Red
+        paintScale.add(maxZ, Color.RED); 
 
         // Paint scale legend with explicit range
         NumberAxis scaleAxis = new NumberAxis("Z-Score");
-        scaleAxis.setRange(minZ, maxZ); // Explicitly set range to match Z values
+        scaleAxis.setRange(minZ, maxZ); 
         PaintScaleLegend legend = new PaintScaleLegend(paintScale, scaleAxis);
         legend.setPosition(RectangleEdge.RIGHT);
         legend.setAxisLocation(AxisLocation.TOP_OR_RIGHT);
@@ -101,9 +101,9 @@ public class VisualizationWindow extends JFrame {
                         if (valueParts.length == 2) {
                             try {
                                 double x;
-                                double z = Double.parseDouble(valueParts[1].trim()); // Always use the value for Z
+                                double z = Double.parseDouble(valueParts[1].trim());
 
-                                // Handle Home/Away conversion for the key
+                                
                                 if (visualizationType.equals("Home/Away")) {
                                     String keyString = valueParts[0].trim().toLowerCase();
                                     if (keyString.equals("home")) {
@@ -120,10 +120,10 @@ public class VisualizationWindow extends JFrame {
                                 }
 
                                 xValues.add(x);
-                                yValues.add(Math.abs(z)); // Height proportional to Z-score
+                                yValues.add(Math.abs(z)); 
                                 zValues.add(z);
 
-                                // Track min and max Z values
+
                                 minZ = Math.min(minZ, z);
                                 maxZ = Math.max(maxZ, z);
                             } catch (NumberFormatException ex) {
@@ -153,7 +153,7 @@ public class VisualizationWindow extends JFrame {
     }
 
     public static void main(String[] args) {
-        VisualizationWindow demo = new VisualizationWindow("Home/Away", "/path/to/hdfs/output");
+        VisualizationWindow demo = new VisualizationWindow("Home/Away", "");
         demo.pack();
         demo.setVisible(true);
     }
