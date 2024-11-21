@@ -97,7 +97,7 @@ public class IDReduce {
         try {
             // Read the CSV file into a Dataset<Row>
             Dataset<Row> df = spark.read()
-                    .option("header", "true") // Assuming the CSV file has headers
+                    .option("header", "true") 
                     .csv(csvPath);
 
             // Filter Dataset<Row> based on player ID
@@ -128,8 +128,6 @@ public class IDReduce {
                     ).otherwise("Error")
             );
 
-            // Remove rows where all descriptions are blank
-
             // Select only the required columns
             Dataset<Row> finalOutput = filtered.select(
                     "game_id", "period", "pctimestring", "homedescription", "visitordescription", "neutraldescription", "play_impact", "score"
@@ -141,10 +139,8 @@ public class IDReduce {
                             .or(col("neutraldescription").isNotNull().and(col("neutraldescription").notEqual("")))
             );
             
-            //Fix scores
 
             //Determine home or away
-
             Dataset<Row> gameteam = df.filter(
                 df.col("player1_id").equalTo(playerId)
                 .or(df.col("player2_id").equalTo(playerId))
@@ -164,7 +160,7 @@ public class IDReduce {
                 .select("game_id", "team_id");
                 
            Dataset<Row> game_summary = spark.read()
-           .option("header", "true") // Assuming the CSV file has headers
+           .option("header", "true") 
            .csv("/csv/game_summary.csv");
 
            Dataset<Row> game_info = game_summary
@@ -258,8 +254,8 @@ public class IDReduce {
 
                 Map<Long, Long> periodScores = period_result.collectAsList().stream()
                         .collect(Collectors.toMap(
-                                row -> Long.valueOf(row.getAs("period").toString()),  // Cast period to Long
-                                row -> Long.valueOf(row.getAs("total_score").toString()) // Cast total_score to Long
+                                row -> Long.valueOf(row.getAs("period").toString()), 
+                                row -> Long.valueOf(row.getAs("total_score").toString()) 
                         ));
                 
                 Map<Long, Double> zPeriod = calcZScores(periodScores);
@@ -275,8 +271,8 @@ public class IDReduce {
                  
                 Map<String, Long> haScores = ha_result.collectAsList().stream()
                         .collect(Collectors.toMap(
-                                row -> row.getAs("home_or_away").toString(),  // Cast period to Long
-                                row -> Long.valueOf(row.getAs("total_score").toString()) // Cast total_score to Long
+                                row -> row.getAs("home_or_away").toString(), 
+                                row -> Long.valueOf(row.getAs("total_score").toString())
                         ));
                 
                 Map<String, Double> zHome = calcZScoresString(haScores);
@@ -335,7 +331,7 @@ public class IDReduce {
             System.err.println("Error processing the Spark job: " + e.getMessage());
             e.printStackTrace();
         } finally {
-            spark.stop(); // Ensure Spark session is closed
+            spark.stop();
         }
     }
 
